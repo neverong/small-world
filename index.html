@@ -3,17 +3,22 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Small World Prototype</title>
+  <title>Small World</title>
+  <meta name="description" content="See when you and your friends will be in the same place, privately, and only when it matters." />
+  <meta name="theme-color" content="#f9fbfc" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Small World" />
+  <link rel="icon" type="image/svg+xml" href="assets/logo-mark.svg" />
+  <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <button class="frames-btn" id="frames-btn" type="button" aria-label="Show all frames">Frames</button>
-  <div class="panel-backdrop" id="panel-backdrop"></div>
+  <!-- The review panel, "Frames" button and phone frame are only added with ?review=1 (see app.js). -->
   <div class="stage">
-    <aside class="panel" id="panel"></aside>
     <div class="device-wrap" id="device-wrap">
       <div class="device" id="device"></div>
     </div>

@@ -55,7 +55,10 @@
     { initials: "SR", name: "Sam Rivera", sent: "Invite sent today" },
   ];
 
-  const GLOW_SCREENS = new Set(["welcome", "invite", "oliverTrips", "form", "signup", "homeBase", "sayHi", "inviteFriends", "alerts", "signin"]);
+  // ?review=1 shows the review tools (frame panel, Frames button, Reset) with the app in a phone frame.
+  // Without it, the live site renders only the app, laid out responsively.
+  const REVIEW = new URLSearchParams(location.search).get("review") === "1";
+  const GLOW_SCREENS =new Set(["welcome", "invite", "oliverTrips", "form", "signup", "homeBase", "sayHi", "inviteFriends", "alerts", "signin"]);
   const STORAGE_KEY = "small-world-prototype-v2";
 
   // ---------- State ----------
@@ -377,7 +380,7 @@
     const tab = (key, label, glyph) =>
       `<button class="tab ${active === key ? "is-active" : ""}" data-action="tab" data-to="${key}">${glyph}<span>${label}</span></button>`;
     return `
-      <div class="footer"><div class="nav-row">
+      <div class="footer nav-footer"><div class="nav-row">
         <nav class="tab-bar">
           ${tab("overlaps", "Overlaps", icon("icon-overlaps", 20))}
           ${tab("friends", "Friends’ trips", icon("icon-globe", 20))}
@@ -426,6 +429,7 @@
           <div class="footer">
             <button class="btn primary full" data-action="new-trip">Get started</button>
             <button class="btn tertiary full" data-action="go" data-to="signin">I already have an account</button>
+            <p class="caption t-tertiary center desktop-only">Only cities and dates are shared — never your live location.</p>
           </div>
         </section>`;
     },
@@ -606,7 +610,7 @@
       let content;
       if (list.length) {
         // Trip overlaps and home-city visits (G4) — a home visit needs no trip of mine.
-        content = list.map((o) => overlapCard(o, state.expanded[o.id])).join("");
+        content = `<div class="card-grid">${list.map((o) => overlapCard(o, state.expanded[o.id])).join("")}</div>`;
       } else if (!state.trips.length) {
         title = "Overlaps";
         content = emptyState("Start with a trip",
@@ -625,10 +629,25 @@
           `<button class="btn primary full" data-action="go" data-to="inviteFriends">Invite friends</button>
            <button class="btn tertiary full" data-action="new-trip">Add another trip</button>`);
       }
+      // Desktop (W2): page title + count, with the friend filter as a pill on the right.
+      const filterLabel = state.filter === "all" ? "All friends" : PEOPLE[state.filter].name;
+      const pageHead = `
+        <div class="page-head desktop-only">
+          <div class="page-head-text">
+            <p class="page-title">Overlaps</p>
+            ${all.length ? `<p class="body-s t-secondary">${all.length} upcoming · when your plans cross a friend’s</p>` : ""}
+          </div>
+          ${all.length ? `
+            <div class="pill-wrap">
+              <button class="filter-pill" data-action="toggle-menu" aria-expanded="${ui.menuOpen}"><span class="label-m">${esc(filterLabel)}</span>${icon("icon-chevron-down", 16)}</button>
+              ${filterMenu()}
+            </div>` : ""}
+        </div>`;
       return `
         <section class="screen no-gap">
           <div class="body">
-            ${topBar(title, { menu: all.length > 0 })}
+            <div class="mobile-only" style="display:contents">${topBar(title, { menu: all.length > 0 })}</div>
+            ${pageHead}
             ${content}
           </div>
           ${navBar("overlaps")}
@@ -740,17 +759,31 @@
       return `
         <section class="screen no-gap">
           <div class="body" style="gap:12px">
-            ${backRow("back", "Back")}
-            <div class="heading-block tight">
-              ${avatar(who, 64)}
-              <p class="overline t-secondary">Friend</p>
-              <p class="display-l">${esc(p.name)}</p>
-              <p class="body-m t-secondary">${since}</p>
+            <div class="mobile-only" style="display:contents">
+              ${backRow("back", "Back")}
+              <div class="heading-block tight">
+                ${avatar(who, 64)}
+                <p class="overline t-secondary">Friend</p>
+                <p class="display-l">${esc(p.name)}</p>
+                <p class="body-m t-secondary">${since}</p>
+              </div>
+            </div>
+            <div class="friend-head desktop-only">
+              <button class="crumb" data-action="back">${icon("icon-chevron-left", 16)}<span class="body-s">Friends</span></button>
+              <div class="friend-head-row">
+                ${avatar(who, 64)}
+                <div class="friend-head-text">
+                  <p class="overline t-secondary">Friend</p>
+                  <p class="page-title">${esc(p.name)}</p>
+                  <p class="body-s t-secondary">${since}</p>
+                </div>
+                <button class="btn tertiary sm danger-text" data-action="open-remove-friend">Remove friend</button>
+              </div>
             </div>
             <p class="overline t-secondary">Upcoming trips</p>
-            ${cards || `<p class="body-s t-secondary">No upcoming trips</p>`}
+            ${cards ? `<div class="card-grid">${cards}</div>` : `<p class="body-s t-secondary">No upcoming trips</p>`}
           </div>
-          <div class="footer">
+          <div class="footer mobile-only">
             <button class="btn tertiary full danger-text" data-action="open-remove-friend">Remove friend</button>
           </div>
         </section>`;
@@ -779,7 +812,7 @@
               ${listRow("Who can see it", visLabel(t.visibility), `data-action="open-visibility" data-ctx="trip"`)}
             </div>
             <p class="overline t-secondary">Overlaps on this trip</p>
-            ${overlaps.length ? overlaps.map((o) => overlapCard(o, state.expanded[o.id])).join("") : `<p class="body-s t-secondary">No overlaps on this trip yet. We’ll let you know when a friend’s plans cross yours.</p>`}
+            ${overlaps.length ? `<div class="card-grid">${overlaps.map((o) => overlapCard(o, state.expanded[o.id])).join("")}</div>` : `<p class="body-s t-secondary">No overlaps on this trip yet. We’ll let you know when a friend’s plans cross yours.</p>`}
           </div>
           <div class="footer">
             <button class="btn secondary full" data-action="edit-trip" data-step="where">Edit trip</button>
@@ -879,13 +912,14 @@
       return `
         <section class="screen no-gap">
           <div class="body">
+            <p class="page-title desktop-only">You</p>
             <div class="profile">
               ${avatar("me", 64)}
               <div class="txt"><p class="heading-l">${esc(myName())}</p><p class="body-s t-secondary">${state.homeCity ? `Based in ${esc(state.homeCity)}` : "No home city yet"}</p></div>
               <button class="btn secondary sm" data-action="go" data-to="settings">Settings</button>
             </div>
             <p class="overline t-secondary">Upcoming trips · ${trips.length}</p>
-            ${cards || empty}
+            ${cards ? `<div class="card-grid">${cards}</div>` : empty}
           </div>
           ${navBar("you")}
         </section>`;
@@ -1100,45 +1134,152 @@
 
   // ---------- Render ----------
   const device = document.getElementById("device");
-  const panel = document.getElementById("panel");
+  let panel = null; // review panel, only created with ?review=1
+
+  // Screen roles for the responsive web layout (Figma v4 · W1–W6).
+  const APP_PAGES = new Set(["overlaps", "friends", "friend", "you", "tripDetail", "settings"]);
+  const AUTH_SCREENS = new Set(["welcome", "signin", "signup", "invite", "homeBase", "oliverTrips"]);
+  const CARD_AUTH_SCREENS = new Set(["form", "homeBase", "oliverTrips"]); // auth screens with cards sit on the canvas colour
+  // Full-screen modals that become centred dialogs on desktop.
+  const isDialogScreen = (s) => s === "inviteFriends" || s === "sayHi" || (s === "form" && state.signedIn);
+  const isAuthScreen = (s) => AUTH_SCREENS.has(s) || (s === "form" && !state.signedIn);
+  // The page a dialog opens over: the most recent non-dialog screen.
+  function dialogBackdropPage() {
+    const prev = [...state.stack].reverse().find((n) => !isDialogScreen(n) && screens[n]);
+    return prev || (state.signedIn ? "overlaps" : "welcome");
+  }
+
+  const chromeFor = (s) => `<div class="chrome">${GLOW_SCREENS.has(s) ? '<div class="glow"></div>' : ""}</div>`;
+  const screenFor = (s) => (screens[s] || screens.welcome)();
+
+  function sidebar(page) {
+    const active = page === "overlaps" ? "overlaps" : page === "friends" || page === "friend" ? "friends" : "you";
+    const item = (key, label, glyph) => `
+      <button class="side-nav ${active === key ? "is-active" : ""}" data-action="tab" data-to="${key}">${glyph}<span>${label}</span></button>`;
+    return `
+      <aside class="sidebar">
+        <div class="side-brand"><span class="logo-32"><img src="assets/logo-mark.svg" alt=""></span><span class="side-name">Small World</span></div>
+        ${item("overlaps", "Overlaps", icon("icon-overlaps", 20))}
+        ${item("friends", "Friends’ trips", icon("icon-globe", 20))}
+        ${item("you", "You", avatar("me", 24))}
+        <div style="height:16px"></div>
+        <button class="btn primary sm full" data-action="new-trip">Add trip</button>
+        <button class="btn secondary sm full" data-action="go" data-to="inviteFriends">${icon("icon-add-friend", 20)}Invite friends</button>
+      </aside>`;
+  }
+
+  function rail(page) {
+    const next = page === "overlaps"
+      ? state.trips.filter((t) => tripRange(t)[1] >= TODAY).sort((a, b) => (tripRange(a)[0] < tripRange(b)[0] ? -1 : 1))[0]
+      : null;
+    return `
+      <aside class="rail ${page === "overlaps" ? "rail-overlaps" : ""}">
+        ${next ? `
+          <div class="rail-card">
+            <p class="overline t-secondary">Your next trip</p>
+            <p class="heading-m">${esc(next.city)}</p>
+            <p class="body-s t-secondary">${esc(tripDates(next, { year: false }))} · ${esc(moodLabel(next.mood))}</p>
+            <button class="btn secondary sm full" data-action="open-trip" data-id="${next.id}">View trip</button>
+          </div>` : ""}
+        <div class="rail-card">
+          <p class="heading-m">Bring your people</p>
+          <p class="body-s t-secondary">Small World only works with friends. Anyone who joins with your link becomes your friend.</p>
+          <div class="rail-link"><span class="body-s">${INVITE_LINK}</span><button class="btn secondary sm" data-action="copy-link">${state.copied ? "Copied" : "Copy"}</button></div>
+        </div>
+      </aside>`;
+  }
+
+  function brandPanel() {
+    return `
+      <aside class="brand-panel">
+        <span class="logo-160"><img src="assets/logo-mark.svg" alt=""></span>
+        <p class="brand-name">Small World</p>
+        <p class="brand-tag">Know when your friends’ travel plans cross yours — and grab a coffee while you’re in the same city.</p>
+      </aside>`;
+  }
+
+  // One page (no dialog) in its responsive layout.
+  function layoutFor(s) {
+    if (isAuthScreen(s)) {
+      return `
+        <div class="layout auth-split">
+          ${brandPanel()}
+          <div class="auth-main ${CARD_AUTH_SCREENS.has(s) ? "on-canvas" : ""}"><div class="col auth-col">${chromeFor(s)}${screenFor(s)}</div></div>
+        </div>`;
+    }
+    if (APP_PAGES.has(s)) {
+      return `
+        <div class="layout shell">
+          ${sidebar(s)}
+          <main class="main"><div class="col page">${chromeFor(s)}${screenFor(s)}</div>${rail(s)}</main>
+        </div>`;
+    }
+    return `<div class="layout plain"><div class="col">${chromeFor(s)}${screenFor(s)}</div></div>`;
+  }
+
+  function liveMarkup() {
+    const s = state.screen;
+    if (!isDialogScreen(s)) return layoutFor(s);
+    return `
+      ${layoutFor(dialogBackdropPage())}
+      <div class="dialog-layer">
+        <div class="dialog-scrim" data-action="dialog-close"></div>
+        <div class="dialog" role="dialog" aria-modal="true">${chromeFor(s)}${screenFor(s)}</div>
+      </div>`;
+  }
+
+  function reviewMarkup() {
+    return `
+      ${chromeFor(state.screen)}
+      ${screenFor(state.screen)}
+      <div class="status-bar"><span class="time">9:41</span><img class="levels" src="assets/levels.svg" alt=""></div>
+      <div class="home-indicator"></div>`;
+  }
 
   function render() {
     // Preserve focus/caret for inputs across re-renders.
     const active = document.activeElement;
     const focusKey = active && active.dataset ? active.dataset.key : null;
     const caret = focusKey && "selectionStart" in active ? [active.selectionStart, active.selectionEnd] : null;
-    const scroller = device.querySelector(".body");
+    const topBody = () => device.querySelector(".dialog .body") || device.querySelector(".body");
+    const scroller = topBody();
     const scrollTop = scroller ? scroller.scrollTop : 0;
+    const mainEl = device.querySelector(".main");
+    const mainScroll = mainEl ? mainEl.scrollTop : 0;
     const prevScreen = device.dataset.screen;
 
-    const fn = screens[state.screen] || screens.welcome;
     device.innerHTML = `
-      <div class="chrome">${GLOW_SCREENS.has(state.screen) ? '<div class="glow"></div>' : ""}</div>
-      ${fn()}
+      ${REVIEW ? reviewMarkup() : liveMarkup()}
       ${renderSheet()}
-      <div class="status-bar"><span class="time">9:41</span><img class="levels" src="assets/levels.svg" alt=""></div>
-      <div class="home-indicator"></div>
       ${ui.toast ? `<div class="toast" role="status">${esc(ui.toast.msg)}</div>` : ""}`;
 
     // Animate only when the screen changes; keep scroll only when the form step is unchanged too.
     const screenKey = `${state.screen}:${state.formStep}`;
-    const sec = device.querySelector(".screen");
     const sameScreen = prevScreen && prevScreen.split(":")[0] === state.screen;
-    if (sameScreen && sec) sec.style.animation = "none";
+    const topSec = device.querySelector(".dialog .screen") || device.querySelector(".screen");
+    device.querySelectorAll(".screen").forEach((sec) => { if (sec !== topSec || sameScreen) sec.style.animation = "none"; });
+    if (sameScreen) device.querySelectorAll(".dialog, .dialog-scrim").forEach((el) => { el.style.animation = "none"; });
     device.dataset.screen = screenKey;
-    const body = device.querySelector(".body");
+    const body = topBody();
     if (body && prevScreen === screenKey) body.scrollTop = scrollTop;
+    const newMain = device.querySelector(".main");
+    if (newMain && sameScreen) newMain.scrollTop = mainScroll;
 
-    // Keep the toast clear of the footer's buttons.
+    // Keep the toast clear of the visible footer's buttons.
     const toastEl = device.querySelector(".toast");
-    const footer = device.querySelector(".screen .footer");
-    if (toastEl && footer) toastEl.style.bottom = `${852 - footer.offsetTop + 12}px`;
+    if (toastEl) {
+      const footers = [...device.querySelectorAll(".dialog .screen .footer, .screen .footer")].filter((f) => f.offsetParent && f.getBoundingClientRect().height);
+      const footer = footers[0];
+      const devRect = device.getBoundingClientRect();
+      if (REVIEW && footer) toastEl.style.bottom = `${852 - footer.offsetTop + 12}px`;
+      else if (footer) toastEl.style.bottom = `${Math.max(24, devRect.bottom - footer.getBoundingClientRect().top + 12)}px`;
+    }
 
     if (focusKey) {
       const el = device.querySelector(`[data-key="${focusKey}"]`);
       if (el) { el.focus(); if (caret) el.setSelectionRange(caret[0], caret[1]); }
     }
-    renderPanel();
+    if (REVIEW) renderPanel();
     save();
   }
 
@@ -1333,6 +1474,7 @@
       case "go": go(el.dataset.to); break;
       case "back": back(); break;
       case "go-home": state.filter = "all"; resetTo("overlaps"); break;
+      case "dialog-close": closeDialogScreen(); break;
       case "new-here": state = freshState(); closeOverlays(); render(); break;
       case "exit-onboarding": {
         // Re-editing a saved trip from Sign up (E5): back returns to Sign up with the trip unchanged.
@@ -1476,6 +1618,12 @@
     }
   }
 
+  // Same as the dialog's own × (add/edit trip discards the draft, Say hi / Invite go back).
+  function closeDialogScreen() {
+    if (state.screen === "form") state.draft = null;
+    back();
+  }
+
   function copy(text) {
     try { return navigator.clipboard.writeText(text).catch(() => {}); } catch (e) { return Promise.resolve(); }
   }
@@ -1521,29 +1669,46 @@
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
     if (document.body.classList.contains("panel-open")) { setPanelOpen(false); return; }
-    if (ui.sheet || ui.menuOpen) { closeOverlays(); render(); }
-  });
-  panel.addEventListener("click", (e) => {
-    const el = e.target.closest("[data-jump]");
-    if (el) jump(el.dataset.jump);
+    if (ui.sheet || ui.menuOpen) { closeOverlays(); render(); return; }
+    // Full-screen modals / dialogs close on Esc, same as their × button.
+    if (isDialogScreen(state.screen)) closeDialogScreen();
   });
 
-  // Narrow screens: the side panel opens as an overlay from a floating "Frames" button.
   function setPanelOpen(open) { document.body.classList.toggle("panel-open", open); }
-  document.getElementById("frames-btn").addEventListener("click", () => setPanelOpen(!document.body.classList.contains("panel-open")));
-  document.getElementById("panel-backdrop").addEventListener("click", () => setPanelOpen(false));
-
-  // Scale the 393×852 device to fit the viewport.
   const wrap = document.getElementById("device-wrap");
-  function fit() {
-    const panelW = window.innerWidth > 900 ? 260 + 48 + 48 : 0;
-    const s = Math.min(1, (window.innerHeight - 48) / 852, (window.innerWidth - panelW - 24) / 393);
-    wrap.style.width = `${393 * s}px`;
-    wrap.style.height = `${852 * s}px`;
-    device.style.transform = `scale(${s})`;
-    device.style.transformOrigin = "top left";
+
+  if (REVIEW) {
+    // Review tools: frame panel (+ "Frames" overlay button on narrow screens) and the app in a phone frame.
+    document.body.classList.add("review");
+    const stage = document.querySelector(".stage");
+    panel = document.createElement("aside");
+    panel.className = "panel";
+    panel.id = "panel";
+    stage.insertBefore(panel, stage.firstChild);
+    document.body.insertAdjacentHTML("afterbegin",
+      `<button class="frames-btn" id="frames-btn" type="button" aria-label="Show all frames">Frames</button><div class="panel-backdrop" id="panel-backdrop"></div>`);
+    panel.addEventListener("click", (e) => {
+      const el = e.target.closest("[data-jump]");
+      if (el) jump(el.dataset.jump);
+    });
+    document.getElementById("frames-btn").addEventListener("click", () => setPanelOpen(!document.body.classList.contains("panel-open")));
+    document.getElementById("panel-backdrop").addEventListener("click", () => setPanelOpen(false));
+
+    // Scale the 393×852 device to fit the viewport.
+    const fit = () => {
+      const panelW = window.innerWidth > 900 ? 260 + 48 + 48 : 0;
+      const s = Math.min(1, (window.innerHeight - 48) / 852, (window.innerWidth - panelW - 24) / 393);
+      wrap.style.width = `${393 * s}px`;
+      wrap.style.height = `${852 * s}px`;
+      device.style.transform = `scale(${s})`;
+      device.style.transformOrigin = "top left";
+    };
+    window.addEventListener("resize", fit);
+    fit();
+  } else {
+    document.body.classList.add("live");
+    // The toast offset depends on which footer is visible at this width.
+    window.addEventListener("resize", () => { if (ui.toast) render(); });
   }
-  window.addEventListener("resize", fit);
-  fit();
   render();
 })();
